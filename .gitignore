@@ -1,0 +1,7 @@
+*.o
+*.axf
+*.map
+*.ld
+*.mk
+Debug/**
+Release/**
