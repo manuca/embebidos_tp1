@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include "chip.h"
 
-typedef enum {gpio_dir_input, gpio_dir_output} gpio_dir;
+typedef enum {GPIO_DIR_INPUT, GPIO_DIR_OUTPUT} gpio_dir;
 
 typedef struct {
   uint8_t port;

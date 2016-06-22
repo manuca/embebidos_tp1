@@ -2,8 +2,10 @@
  * Plantilla
 */
 
-#include "chip.h"
 #include <cr_section_macros.h>
+#include <stdbool.h>
+
+#include "api_gpio.h"
 
 #define TICKBASE_HZ      (1000)
 
@@ -34,19 +36,9 @@ void SysTick_Handler(void)
 	systick = 1;
 }
 
-void ledOn()
+void gpioButtonGetState(struct button * button_state, gpio_port_t const * gpio)
 {
-  Chip_GPIO_SetPinState(LPC_GPIO, 0, 22, true);
-}
-
-void ledOff()
-{
-  Chip_GPIO_SetPinState(LPC_GPIO, 0, 22, false);
-}
-
-void buttonStateRead(struct button * button_state)
-{
-  button_state->pressed = !Chip_GPIO_GetPinState(LPC_GPIO, 0, 17);
+  button_state->pressed = !GPIO_read(gpio);
 }
 
 void ledCycleUpdate(struct led_cycle_state * state)
@@ -60,13 +52,13 @@ void ledCycleUpdate(struct led_cycle_state * state)
   }
 }
 
-void setHWLedState(struct led_cycle_state * state)
+void setHWLedState(struct led_cycle_state * state, gpio_port_t const * gpio)
 {
   if(state->on) {
-    ledOn();
+    GPIO_write(gpio, 1);
   }
   else {
-    ledOff();
+    GPIO_write(gpio, 0);
   }
 }
 
@@ -91,11 +83,15 @@ int main(void) {
   SystemCoreClockUpdate();
   SysTick_Config(SystemCoreClock/TICKBASE_HZ);
 
-  Chip_GPIO_SetPinDIROutput(LPC_GPIO, 0, 22);
+  gpio_port_t gpio_led;
+  gpio_port_t gpio_button;
 
   struct seconds_clock clock       = {.seconds = 0, .ticks = 0};
   struct led_cycle_state led_state = {.ticks = 0, .on = FALSE, .ticks_per_period = TICKBASE_HZ};
   struct button button_state = {.pressed = FALSE};
+
+  GPIO_init(&gpio_led, 0, 22, GPIO_DIR_OUTPUT);
+  GPIO_init(&gpio_button, 0, 17, GPIO_DIR_INPUT);
 
   secondsClockReset(&clock);
 
@@ -105,7 +101,8 @@ int main(void) {
 
       ledCycleUpdate(&led_state);
       secondsClockTickUpdate(&clock);
-      buttonStateRead(&button_state);
+
+      gpioButtonGetState(&button_state, &gpio_button);
 
       // Every 5s
       if((clock.seconds != 0) && (clock.seconds % 5 == 0)) {
@@ -119,10 +116,10 @@ int main(void) {
       }
 
       if (button_state.pressed) {
-        setHWLedState(&led_state);
+        setHWLedState(&led_state, &gpio_led);
       }
       else {
-        ledOff();
+        GPIO_write(&gpio_led, false);
       }
     }
   }
